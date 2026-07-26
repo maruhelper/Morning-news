@@ -17,18 +17,25 @@ def send_kakao_news_cards():
         root = ET.fromstring(response.text)
         contents = []
         
-        # 가장 핫한 기사 3개 추출해서 카드 아이템으로 만들기
-        for item in root.findall('.//item')[:3]:
+        # 가장 핫한 기사 5개로 변경 ([:5])
+        for item in root.findall('.//item')[:5]:
             title = item.find('title').text
-            link = item.find('link').text
+            rss_link = item.find('link').text
             
-            # 각 기사를 카카오톡 '콘텐츠 카드' 형태로 구성
+            # 구글 우회 링크에서 진짜 원본 기사 URL 추출 시도
+            real_link = rss_link
+            try:
+                res_redirect = requests.get(rss_link, headers={'User-Agent': 'Mozilla/5.0'}, allow_redirects=True, timeout=3)
+                real_link = res_redirect.url
+            except:
+                pass
+            
             content_item = {
-                "title": title[:100],  # 제목이 너무 길면 잘릴 수 있으므로 100자 제한
+                "title": title[:100],
                 "description": "👉 터치하여 기사 원문 보기",
                 "link": {
-                    "web_url": link,
-                    "mobile_web_url": link
+                    "web_url": real_link,
+                    "mobile_web_url": real_link
                 }
             }
             contents.append(content_item)
@@ -43,10 +50,9 @@ def send_kakao_news_cards():
         }
         api_url = "https://kapi.kakao.com/v2/api/talk/memo/default/send"
         
-        # 카카오톡 '리스트 템플릿(list)'을 사용하여 깔끔한 카드 형태로 전송
         payload = {
             "object_type": "list",
-            "header_title": "[실시간 핫이슈 TOP 3]",
+            "header_title": "[실시간 핫이슈 TOP 5]",
             "header_link": {
                 "web_url": "https://www.google.com",
                 "mobile_web_url": "https://www.google.com"
@@ -66,5 +72,5 @@ def send_kakao_news_cards():
         print(f"오류 발생: {str(e)}")
 
 if __name__ == "__main__":
-    print("카드형 뉴스 전송을 시작합니다.")
+    print("원격 링크 변환 5개 카드형 뉴스 전송을 시작합니다.")
     send_kakao_news_cards()
