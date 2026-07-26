@@ -7,8 +7,7 @@ KAKAO_TOKEN = os.environ.get('KAKAO_TOKEN')
 
 def send_kakao_news_cards():
     try:
-        # 네이버 뉴스 RSS를 사용하여 확실한 원본 언론사 링크 확보
-        url = "https://news.google.com/rss/search?q=뉴스&hl=ko&gl=KR&ceid=KR:ko"
+        url = "https://news.google.com/rss?hl=ko&gl=KR&ceid=KR:ko"
         response = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'})
         
         if response.status_code != 200:
@@ -16,31 +15,25 @@ def send_kakao_news_cards():
             return
             
         root = ET.fromstring(response.text)
-        contents = []
+        news_list = []
         
         for item in root.findall('.//item')[:3]:
             title = item.find('title').text
             rss_link = item.find('link').text
             
-            # 우회 링크를 풀어서 진짜 원본 주소 찾기
+            # 구글 리다이렉트 링크를 카카오톡이 안정적으로 처리할 수 있게 기본 형태로 정돈
             real_link = rss_link
             try:
                 res_redirect = requests.get(rss_link, headers={'User-Agent': 'Mozilla/5.0'}, allow_redirects=True, timeout=3)
-                real_link = res_redirect.url
+                if res_redirect.url:
+                    real_link = res_redirect.url
             except:
                 pass
             
-            content_item = {
-                "title": title[:100],
-                "description": "👉 터치하여 기사 원문 보기",
-                "link": {
-                    "web_url": real_link,
-                    "mobile_web_url": real_link
-                }
-            }
-            contents.append(content_item)
+            # 리스트 템플릿 대신 카카오톡이 완벽히 링크를 여는 피드(Feed) 형식 조합 활용
+            news_list.append(f"• {title}\n  {real_link}")
             
-        if not contents:
+        if not news_list:
             print("수집된 뉴스가 없습니다.")
             return
 
@@ -50,14 +43,14 @@ def send_kakao_news_cards():
         }
         api_url = "https://kapi.kakao.com/v2/api/talk/memo/default/send"
         
+        # 카카오톡 기본 텍스트/링크 연동 규격으로 전환하여 링크 클릭 보장
         payload = {
-            "object_type": "list",
-            "header_title": "[실시간 핫이슈 TOP 3]",
-            "header_link": {
-                "web_url": "https://www.naver.com",
-                "mobile_web_url": "https://www.naver.com"
-            },
-            "contents": contents
+            "object_type": "text",
+            "text": "[실시간 핫이슈 TOP 3]\n\n" + "\n\n".join(news_list),
+            "link": {
+                "web_url": "https://www.google.com",
+                "mobile_web_url": "https://www.google.com"
+            }
         }
         
         data = {
@@ -72,5 +65,5 @@ def send_kakao_news_cards():
         print(f"오류 발생: {str(e)}")
 
 if __name__ == "__main__":
-    print("링크 원문 연결 3개 카드형 뉴스 전송을 시작합니다.")
+    print("링크 클릭 보장형 뉴스 전송을 시작합니다.")
     send_kakao_news_cards()
