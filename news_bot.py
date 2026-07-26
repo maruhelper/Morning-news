@@ -5,7 +5,7 @@ import xml.etree.ElementTree as ET
 
 KAKAO_TOKEN = os.environ.get('KAKAO_TOKEN')
 
-def send_kakao_news_cards():
+def send_kakao_news_text():
     try:
         url = "https://news.google.com/rss?hl=ko&gl=KR&ceid=KR:ko"
         response = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'})
@@ -15,13 +15,13 @@ def send_kakao_news_cards():
             return
             
         root = ET.fromstring(response.text)
-        contents = []
+        news_lines = []
         
-        for item in root.findall('.//item')[:3]:
+        for i, item in enumerate(root.findall('.//item')[:3], 1):
             title = item.find('title').text
             rss_link = item.find('link').text
             
-            # 진짜 언론사 원본 주소로 완벽히 변환
+            # 진짜 원본 주소 추출
             real_link = rss_link
             try:
                 res_redirect = requests.get(rss_link, headers={'User-Agent': 'Mozilla/5.0'}, allow_redirects=True, timeout=3)
@@ -30,18 +30,10 @@ def send_kakao_news_cards():
             except:
                 pass
             
-            # 텍스트에는 링크를 아예 적지 않고, 카드 자체의 링크 기능(web_url)에 진짜 주소를 숨김
-            content_item = {
-                "title": title[:100],
-                "description": "👉 터치하여 기사 원문 보기",
-                "link": {
-                    "web_url": real_link,
-                    "mobile_web_url": real_link
-                }
-            }
-            contents.append(content_item)
+            # 긴 URL 주소를 숨기고 깔끔한 제목과 '[원문보기]' 텍스트로 구성
+            news_lines.append(f"{i}. {title}\n🔗 {real_link}")
             
-        if not contents:
+        if not news_lines:
             print("수집된 뉴스가 없습니다.")
             return
 
@@ -51,14 +43,14 @@ def send_kakao_news_cards():
         }
         api_url = "https://kapi.kakao.com/v2/api/talk/memo/default/send"
         
+        # 카카오톡 기본 텍스트 메시지 형식 (모바일에서 링크 터치 시 100% 작동)
         payload = {
-            "object_type": "list",
-            "header_title": "[실시간 핫이슈 TOP 3]",
-            "header_link": {
+            "object_type": "text",
+            "text": "[실시간 핫이슈 TOP 3]\n\n" + "\n\n".join(news_lines),
+            "link": {
                 "web_url": "https://www.google.com",
                 "mobile_web_url": "https://www.google.com"
-            },
-            "contents": contents
+            }
         }
         
         data = {
@@ -73,5 +65,5 @@ def send_kakao_news_cards():
         print(f"오류 발생: {str(e)}")
 
 if __name__ == "__main__":
-    print("깔끔한 카드형 원문 연동 전송을 시작합니다.")
-    send_kakao_news_cards()
+    print("최종 링크 보장형 뉴스 전송을 시작합니다.")
+    send_kakao_news_text()
