@@ -1,6 +1,5 @@
 import os
-import urllib.request
-import json
+import requests
 import xml.etree.ElementTree as ET
 
 KAKAO_TOKEN = os.environ.get('KAKAO_TOKEN')
@@ -8,12 +7,12 @@ KAKAO_TOKEN = os.environ.get('KAKAO_TOKEN')
 def get_naver_news():
     try:
         url = "https://news.google.com/rss/search?q=네이버뉴스&hl=ko&gl=KR&ceid=KR:ko"
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        response = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'})
         
-        with urllib.request.urlopen(req) as response:
-            html = response.read().decode('utf-8', errors='ignore')
+        if response.status_code != 200:
+            return "뉴스를 불러오는 데 실패했습니다."
             
-        root = ET.fromstring(html)
+        root = ET.fromstring(response.text)
         news_list = []
         
         for item in root.findall('.//item')[:5]:
@@ -35,7 +34,6 @@ def send_kakao_message(text):
     }
     url = "https://kapi.kakao.com/v2/api/talk/memo/default/send"
     
-    # 템플릿 객체 만들기
     payload = {
         "object_type": "text",
         "text": f"[오늘의 아침 뉴스]\n\n{text}",
@@ -45,17 +43,10 @@ def send_kakao_message(text):
         }
     }
     
-    # urlencode 대신 f-string과 json.dumps 조합으로 한글 깨짐 원천 방지
-    post_data = f"template_object={json.dumps(payload, ensure_ascii=False)}".encode('utf-8')
-    
-    req = urllib.request.Request(url, data=post_data, headers=header)
-    
-    try:
-        with urllib.request.urlopen(req) as response:
-            print("카카오 응답 코드:", response.status)
-            print("카카오 응답 내용:", response.read().decode('utf-8'))
-    except Exception as e:
-        print("카카오 전송 실패:", str(e))
+    # requests를 쓰면 인코딩 에러 없이 한글이 완벽하게 전송됩니다.
+    res = requests.post(url, headers=header, data={"template_object": str(payload).replace("'", '"')})
+    print("카카오 응답 코드:", res.status_code)
+    print("카카오 응답 내용:", res.text)
 
 if __name__ == "__main__":
     print("아침 뉴스 수집을 시작합니다.")
