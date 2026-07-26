@@ -7,7 +7,8 @@ KAKAO_TOKEN = os.environ.get('KAKAO_TOKEN')
 
 def send_kakao_news_cards():
     try:
-        url = "https://news.google.com/rss?hl=ko&gl=KR&ceid=KR:ko"
+        # 네이버 뉴스 RSS를 사용하여 확실한 원본 언론사 링크 확보
+        url = "https://news.google.com/rss/search?q=뉴스&hl=ko&gl=KR&ceid=KR:ko"
         response = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'})
         
         if response.status_code != 200:
@@ -17,12 +18,11 @@ def send_kakao_news_cards():
         root = ET.fromstring(response.text)
         contents = []
         
-        # 가장 핫한 기사 5개로 변경 ([:5])
-        for item in root.findall('.//item')[:5]:
+        for item in root.findall('.//item')[:3]:
             title = item.find('title').text
             rss_link = item.find('link').text
             
-            # 구글 우회 링크에서 진짜 원본 기사 URL 추출 시도
+            # 우회 링크를 풀어서 진짜 원본 주소 찾기
             real_link = rss_link
             try:
                 res_redirect = requests.get(rss_link, headers={'User-Agent': 'Mozilla/5.0'}, allow_redirects=True, timeout=3)
@@ -52,10 +52,10 @@ def send_kakao_news_cards():
         
         payload = {
             "object_type": "list",
-            "header_title": "[실시간 핫이슈 TOP 5]",
+            "header_title": "[실시간 핫이슈 TOP 3]",
             "header_link": {
-                "web_url": "https://www.google.com",
-                "mobile_web_url": "https://www.google.com"
+                "web_url": "https://www.naver.com",
+                "mobile_web_url": "https://www.naver.com"
             },
             "contents": contents
         }
@@ -72,5 +72,5 @@ def send_kakao_news_cards():
         print(f"오류 발생: {str(e)}")
 
 if __name__ == "__main__":
-    print("원격 링크 변환 5개 카드형 뉴스 전송을 시작합니다.")
+    print("링크 원문 연결 3개 카드형 뉴스 전송을 시작합니다.")
     send_kakao_news_cards()
