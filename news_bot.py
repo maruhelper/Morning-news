@@ -1,6 +1,5 @@
 import os
 import urllib.request
-import urllib.parse
 import json
 import xml.etree.ElementTree as ET
 
@@ -30,10 +29,13 @@ def get_naver_news():
         return f"뉴스 수집 중 오류 발생: {str(e)}"
 
 def send_kakao_message(text):
-    header = {"Authorization": f"Bearer {KAKAO_TOKEN}"}
+    header = {
+        "Authorization": f"Bearer {KAKAO_TOKEN}",
+        "Content-Type": "application/x-www-form-urlencoded;charset=utf-8"
+    }
     url = "https://kapi.kakao.com/v2/api/talk/memo/default/send"
     
-    # 딕셔너리로 깔끔하게 구성 후 json으로 변환하여 한글 깨짐 방지
+    # 템플릿 객체 만들기
     payload = {
         "object_type": "text",
         "text": f"[오늘의 아침 뉴스]\n\n{text}",
@@ -43,10 +45,10 @@ def send_kakao_message(text):
         }
     }
     
-    data = {"template_object": json.dumps(payload, ensure_ascii=False)}
-    encoded_data = urllib.parse.urlencode(data).encode('utf-8')
+    # urlencode 대신 f-string과 json.dumps 조합으로 한글 깨짐 원천 방지
+    post_data = f"template_object={json.dumps(payload, ensure_ascii=False)}".encode('utf-8')
     
-    req = urllib.request.Request(url, data=encoded_data, headers=header)
+    req = urllib.request.Request(url, data=post_data, headers=header)
     
     try:
         with urllib.request.urlopen(req) as response:
