@@ -1,0 +1,29 @@
+name: Morning News Bot
+
+on:
+  schedule:
+    # 매일 아침 8시(한국 시간 기준)에 자동 실행되도록 설정 (UTC 기준 23시)
+    - cron: '0 23 * * *'
+  workflow_dispatch: # 수동으로도 언제든 실행해볼 수 있는 버튼
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 소스코드 가져오기
+        uses: actions/checkout@v4
+
+      - name: 파이썬 설치하기
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: 필요한 도구(라이브러리) 설치
+        run: |
+          pip install requests beautifulsoup4
+
+      - name: 뉴스 봇 실행하기
+        env:
+          KAKAO_TOKEN: ${{ secrets.KAKAO_TOKEN }}
+        run: |
+          python news_bot.py
