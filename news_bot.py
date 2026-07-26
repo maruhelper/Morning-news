@@ -15,13 +15,13 @@ def send_kakao_news_cards():
             return
             
         root = ET.fromstring(response.text)
-        news_list = []
+        contents = []
         
         for item in root.findall('.//item')[:3]:
             title = item.find('title').text
             rss_link = item.find('link').text
             
-            # 구글 리다이렉트 링크를 카카오톡이 안정적으로 처리할 수 있게 기본 형태로 정돈
+            # 진짜 언론사 원본 주소로 완벽히 변환
             real_link = rss_link
             try:
                 res_redirect = requests.get(rss_link, headers={'User-Agent': 'Mozilla/5.0'}, allow_redirects=True, timeout=3)
@@ -30,10 +30,18 @@ def send_kakao_news_cards():
             except:
                 pass
             
-            # 리스트 템플릿 대신 카카오톡이 완벽히 링크를 여는 피드(Feed) 형식 조합 활용
-            news_list.append(f"• {title}\n  {real_link}")
+            # 텍스트에는 링크를 아예 적지 않고, 카드 자체의 링크 기능(web_url)에 진짜 주소를 숨김
+            content_item = {
+                "title": title[:100],
+                "description": "👉 터치하여 기사 원문 보기",
+                "link": {
+                    "web_url": real_link,
+                    "mobile_web_url": real_link
+                }
+            }
+            contents.append(content_item)
             
-        if not news_list:
+        if not contents:
             print("수집된 뉴스가 없습니다.")
             return
 
@@ -43,14 +51,14 @@ def send_kakao_news_cards():
         }
         api_url = "https://kapi.kakao.com/v2/api/talk/memo/default/send"
         
-        # 카카오톡 기본 텍스트/링크 연동 규격으로 전환하여 링크 클릭 보장
         payload = {
-            "object_type": "text",
-            "text": "[실시간 핫이슈 TOP 3]\n\n" + "\n\n".join(news_list),
-            "link": {
+            "object_type": "list",
+            "header_title": "[실시간 핫이슈 TOP 3]",
+            "header_link": {
                 "web_url": "https://www.google.com",
                 "mobile_web_url": "https://www.google.com"
-            }
+            },
+            "contents": contents
         }
         
         data = {
@@ -65,5 +73,5 @@ def send_kakao_news_cards():
         print(f"오류 발생: {str(e)}")
 
 if __name__ == "__main__":
-    print("링크 클릭 보장형 뉴스 전송을 시작합니다.")
+    print("깔끔한 카드형 원문 연동 전송을 시작합니다.")
     send_kakao_news_cards()
